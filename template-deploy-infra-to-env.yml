@@ -5,11 +5,11 @@ parameters:
   - name: condition
     type: string
     default: 'succeeded()'
-  - name: workingDirectory
-    type: string
-    default: '$(Build.Repository.Name)/tools/infra'
   - name: serviceName
     type: string
+  - name: workingDirectory
+    type: string
+    default: '$(Agent.BuildDirectory)/${{ parameters.serviceName }}/tools/infra'
   - name: environment
     type: string
   - name: serviceConnectionAzure
@@ -46,7 +46,7 @@ stages:
                 - checkout: terraform-modules
                 
                 - bash: echo $(Build.Repository.Name)/tools/infra
-                - bash: echo $(Build.Repository.Name)
+                - bash: echo $(Agent.BuildDirectory)
                 - bash: ls 
 
                 - task: TerraformInstaller@0
