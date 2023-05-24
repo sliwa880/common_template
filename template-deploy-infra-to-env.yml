@@ -9,7 +9,7 @@ parameters:
     type: string
   - name: workingDirectory
     type: string
-    default: '$(Agent.BuildDirectory)/Agent.JobName/tools/infra'
+    default: '$(Agent.BuildDirectory)/$(Agent.JobName)/tools/infra'
   - name: environment
     type: string
   - name: serviceConnectionAzure
@@ -45,8 +45,8 @@ stages:
                 - checkout: self
                 - checkout: terraform-modules
                 
-                - bash: echo $(Build.Repository.Name)/tools/infra
-                - bash: echo $(Agent.BuildDirectory)
+                - bash: echo $(Agent.BuildDirectory)/$(Agent.JobName)/tools/infra
+                - bash: echo ${{ parameters.workingDirectory }}
                 - bash: ls 
 
                 - task: TerraformInstaller@0
