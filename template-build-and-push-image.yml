@@ -1,0 +1,89 @@
+parameters:
+- name: name
+  type: string
+  default: ''
+- name: dependsOn
+  type: object
+  default: []
+- name: condition
+  type: string
+  default: 'succeeded()'
+- name: repository
+  type: string
+- name: dockerFile
+  type: string
+- name: buildContext
+  type: string
+- name: containerRegistryName
+  type: string
+- name: containerRegistryServiceConnection
+  type: string
+- name: imageTag 
+  type: string
+- name: runTests
+  default: true
+  type: boolean
+- name: buildArguments
+  type: string
+  default: ''
+
+stages:
+  - stage: build${{ parameters.name }}
+    displayName: Build image ${{ parameters.name }}
+    dependsOn: ${{ parameters.dependsOn }}
+    condition: ${{ parameters.condition }}
+    jobs:
+    - job: build_and_push
+      displayName: Build and push
+      steps:
+      - task: Docker@2
+        condition: eq(${{ parameters.runTests }}, true)
+        displayName: Build image for tests
+        inputs:    
+          containerRegistry: ${{ parameters.containerRegistryServiceConnection }}
+          repository: ${{ parameters.repository }}
+          command: build
+          arguments: ${{ parameters.buildArguments }} --target test-stage
+          Dockerfile: ${{ parameters.dockerFile }}
+          buildContext: ${{ parameters.buildContext }}
+          tags: test
+          addPipelineData: false
+          addBaseImageData: false
+    
+      - task: CmdLine@2
+        condition: eq(${{ parameters.runTests }}, true)
+        displayName: Run tests
+        inputs:
+          script: docker run --mount type=bind,source=$(Common.TestResultsDirectory),target=/src/testsResults ${{ parameters.containerRegistryName }}/${{ parameters.repository }}:test
+    
+      - task: PublishTestResults@2
+        condition: and(succeededOrFailed(), eq(${{ parameters.runTests }}, true))
+        inputs:
+          testRunner: VSTest
+          testResultsFiles: $(Common.TestResultsDirectory)/*.trx
+          failTaskOnFailedTests: true
+   
+      - task: Docker@2
+        displayName: Build image
+        inputs:
+          containerRegistry: ${{ parameters.containerRegistryServiceConnection }}
+          repository: ${{ parameters.repository }}
+          command: build
+          arguments: ${{ parameters.buildArguments }} 
+          Dockerfile: ${{ parameters.dockerFile }}
+          buildContext: ${{ parameters.buildContext }}
+          addPipelineData: false
+          addBaseImageData: false
+          tags: |
+            ${{ parameters.imageTag }}
+            latest
+
+      - task: Docker@2
+        displayName: Push image to ACR
+        inputs:
+          containerRegistry: ${{ parameters.containerRegistryServiceConnection }}
+          repository: ${{ parameters.repository }}
+          command: push
+          tags: |
+            ${{ parameters.imageTag }}
+            latest

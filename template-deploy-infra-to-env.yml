@@ -1,0 +1,91 @@
+parameters:
+  - name: dependsOn
+    type: object
+    default: []
+  - name: condition
+    type: string
+    default: 'succeeded()'
+  - name: workingDirectory
+    type: string
+    default: '$(Build.Repository.Name)/tools/infra'
+  - name: serviceName
+    type: string
+  - name: environment
+    type: string
+  - name: serviceConnectionAzure
+    type: string
+  - name: terraformBackendResourceGroup
+    type: string
+  - name: terraformBackendStorageAccount
+    type: string
+  - name: terraformBackendStorageContainer
+    type: string
+    default: tfstate
+  - name: variables
+    type: object
+    default: []
+  - name: additionalTerraformCommandOptions
+    default: ''
+    type: string
+
+stages:
+  - stage: provision_infrastructure_${{ parameters.environment }}
+    dependsOn: ${{ parameters.dependsOn }}
+    condition: ${{ parameters.condition }}
+    displayName: ${{ parameters.environment }} - Provision infrastructure 
+    jobs:
+      - deployment: provision_infrastructure_job
+        displayName: ${{ parameters.environment }}
+        environment: ${{ parameters.environment }}
+        variables: ${{ parameters.variables }}
+        strategy: 
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                - checkout: terraform-modules
+                
+                - task: TerraformInstaller@0
+                  inputs:
+                    terraformVersion: 'latest'
+
+                - task: TerraformTaskV2@2
+                  displayName: Terraform Init
+                  inputs:
+                    provider: 'azurerm'
+                    command: 'init'
+                    workingDirectory: '${{ parameters.workingDirectory }}'
+                    backendAzureRmResourceGroupName: '${{ parameters.terraformBackendResourceGroup }}'
+                    backendAzureRmStorageAccountName: '${{ parameters.terraformBackendStorageAccount }}'
+                    backendAzureRmContainerName: '${{ parameters.terraformBackendStorageContainer }}'
+                    backendAzureRmKey: '${{ parameters.serviceName }}.tfstate'
+                    backendServiceArm: '${{ parameters.serviceConnectionAzure }}'
+
+                - task: TerraformTaskV2@2
+                  displayName: Terraform Validate
+                  inputs:
+                    provider: 'azurerm'
+                    command: 'validate'
+                    workingDirectory: '${{ parameters.workingDirectory }}'
+                    environmentServiceNameAzureRM: '${{ parameters.serviceConnectionAzure }}'
+
+                - task: TerraformTaskV2@2
+                  displayName: Terraform Plan
+                  inputs:
+                    provider: 'azurerm'
+                    command: 'plan'
+                    commandOptions: >
+                      -var-file="environments/${{ parameters.environment }}.tfvars"       
+                      -out tfplan
+                      ${{ parameters.additionalTerraformCommandOptions }}       
+                    workingDirectory: '${{ parameters.workingDirectory }}'
+                    environmentServiceNameAzureRM: '${{ parameters.serviceConnectionAzure }}'
+
+                - task: TerraformTaskV2@2
+                  displayName: Terraform Apply
+                  inputs:
+                    provider: 'azurerm'
+                    command: 'apply'
+                    commandOptions: '-input=false -auto-approve tfplan'
+                    workingDirectory: '${{ parameters.workingDirectory }}'
+                    environmentServiceNameAzureRM: ${{ parameters.serviceConnectionAzure }}
