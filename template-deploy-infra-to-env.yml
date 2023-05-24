@@ -45,6 +45,10 @@ stages:
                 - checkout: self
                 - checkout: terraform-modules
                 
+                - bash: echo $(Build.Repository.Name)/tools/infra
+                - bash: echo $(Build.Repository.Name)
+                - bash: ls 
+
                 - task: TerraformInstaller@0
                   inputs:
                     terraformVersion: 'latest'
