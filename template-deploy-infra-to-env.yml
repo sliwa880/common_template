@@ -9,7 +9,7 @@ parameters:
     type: string
   - name: workingDirectory
     type: string
-    default: '$(Agent.BuildDirectory)/${{ parameters.serviceName }}/tools/infra'
+    default: '$(Agent.BuildDirectory)/Agent.JobName/tools/infra'
   - name: environment
     type: string
   - name: serviceConnectionAzure
