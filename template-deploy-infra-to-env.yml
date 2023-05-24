@@ -43,11 +43,15 @@ stages:
             deploy:
               steps:
                 - checkout: self
+                  submodules: true
+                  displayName: ${{ parameters.serviceName }}
+                  
                 - checkout: terraform-modules
                 
                 - bash: echo $(Build.Repository.LocalPath)/$(System.JobName)/tools/infra
                 - bash: echo $(System.JobDisplayName)
                 - bash: echo ${{ parameters.workingDirectory }}
+                - bash: ls
                 - bash: pwd
 
                 - task: TerraformInstaller@0
